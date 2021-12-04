@@ -23,3 +23,6 @@ def rotate_on_smith_chart(G: complex, towards_generator: bool, distance_in_lambd
     G_prime = G * np.exp(direction*-1j*angle)
     # G_prime_rounded = round(np.real(G_prime),6) + 1j * round(np.imag(G_prime),6)
     return G_prime
+
+def display_rounded_complex_number(z: complex, n: int):
+    return round(np.real(z),n) + 1j * round(np.imag(z),n)

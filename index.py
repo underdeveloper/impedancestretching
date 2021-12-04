@@ -1,6 +1,7 @@
 import numpy as np
 from auxilliary import *
-from scipy.constants import speed_of_light as c
+from verify import *
+from tabulate import tabulate
 
 # working_freq = int(input("Masukkan f (dalam MegaHertz): "))*1e6 # Working frequency
 # dl = float(input("Masukkan dl (dalam cm): "))*1e-2 # Panjang transmission line kanan setelah stub
@@ -11,7 +12,6 @@ ds = 3.875e-2
 
 stub_type = False  # Jenis stub, apabila True berarti short, apabila False berarti open
 
-working_lambda = c/working_freq
 
 load_impedance = parallel(50, 1/(1j*2*np.pi*working_freq*22e-12)) # Impedance at load
 trans_line_inherent_impedance = 50
@@ -19,35 +19,24 @@ trans_line_inherent_impedance = 50
 d = 100e-2 # Length of transmission line
 da = d-dl
 
-# ! Stage One
-# -------''' '''--------OL # Right near load
-Gl = find_reflection_coef(load_impedance, trans_line_inherent_impedance)
-print("Normalised load impedance:\n ", normalize(load_impedance, trans_line_inherent_impedance))
+# Verification of ref. coef. at generatorside
 
-# ! Stage Two
-# -------''' '''O--------L # Right near stub
-Gs2 = rotate_on_smith_chart(Gl, True, dl/working_lambda)
-Zs2 = find_point_impedance(Gs2, trans_line_inherent_impedance)
-print("Normalised impedance right of stub:\n ", normalize(Zs2, trans_line_inherent_impedance))
 
-# ! Stage Three
-# -------'''O'''---------L # The stub
-if stub_type: # Jika short
-    Gsx = rotate_on_smith_chart(-1+0j, True, ds/working_lambda)
-else:
-    Gsx = rotate_on_smith_chart(1+0j, True, ds/working_lambda)
+# Sweeping frequencies
+f = 390e6
+freqs = []
+coefs = []
+coefs_abs = []
+while f <= 410e6:
+    Gg_ = get_reflection_coefficient_at_generator(
+        load_impedance, trans_line_inherent_impedance, f, dl, ds, da, stub_type)
+    Gg_r = display_rounded_complex_number(Gg_, 3)
+    freqs.append("{:.3e}".format(f))
+    coefs.append("{}".format(Gg_r))
+    coefs_abs.append("{:.3}".format(abs(Gg_r)))
+    # print("{:.3e} \t {} \t {:3}".format(f,Gg_r,abs(Gg_r)))
+    f += 1e6
 
-Zsx = find_point_impedance(Gsx, trans_line_inherent_impedance)
-print("Equivalent impedance to stub:\n ", normalize(Zsx, trans_line_inherent_impedance))
+table = {'Frequency': freqs, 'Gamma': coefs, '|Gamma|': coefs_abs}
 
-# ! Stage Four
-# ------O''''''---------L # Left near stub
-Zs1 = Zs2 + Zsx
-print("Normalised impedance left of stub (should have very little reactance):\n ", normalize(Zs1, trans_line_inherent_impedance))
-Gs1 = find_reflection_coef(Zs1, trans_line_inherent_impedance)
-
-# ! Stage Five
-# O------''''''---------L # Left near generator
-Gg = rotate_on_smith_chart(Gs1, True, da/working_lambda)
-
-print("Reflection coefficient near generator (should be near enough to 0):\n ",Gg)
+print(tabulate(table, headers='keys'))
